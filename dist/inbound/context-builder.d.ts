@@ -28,6 +28,8 @@ export declare function runAccessStage(event: QueuedMessage, accountConfig: QQBo
 export declare function processAttachments(attachments: QueuedMessage["attachments"], options?: {
     downloadImages?: boolean;
     dataDir?: string;
+    enableVoiceProcessing?: boolean;
+    sttApiKey?: string;
 }): Promise<ProcessedAttachments>;
 export declare function buildUserContent(event: QueuedMessage, processed: ProcessedAttachments): {
     parsedContent: string;

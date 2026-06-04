@@ -31,5 +31,6 @@ export declare const log: {
     session: Logger;
     upload: Logger;
     chunked: Logger;
+    voice: Logger;
 };
 //# sourceMappingURL=logger.d.ts.map

@@ -92,6 +92,7 @@ export interface ProcessedAttachments {
     voiceAsrReferTexts: string[];
     voiceTranscripts: string[];
     voiceTranscriptSources: string[];
+    voiceDecodedWavPaths: string[];
     attachmentLocalPaths: string[];
 }
 export interface ReplyToInfo {

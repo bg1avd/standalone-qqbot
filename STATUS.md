@@ -235,10 +235,33 @@ ls dist/
 - ✅ 实现 `sendMediaReference()` 发送带媒体的消息
 - ✅ 集成分块上传后的引用流程
 
-### 下一步：Phase 2.3 语音处理
+### Phase 2.3 语音处理 完成详情
 
-- ⏳ 集成 silk-wasm 编解码
-- ⏳ 实现语音消息接收解码
-- ⏳ STT 语音转文字 (可选)
-- ⏳ sendVoice() 方法实现
+- ✅ 集成 silk-wasm 编解码（动态加载）
+- ✅ 实现语音消息接收解码 (src/inbound/voice-processor.ts)
+- ✅ STT 语音转文字 (OpenAI Whisper API)
+- ⏳ sendVoice() 方法实现 (Phase 3 暂缓)
+
+---
+
+### Phase 2 总体完成度
+
+- **2.1**: 分块上传 ✅
+- **2.2**: 媒体引用发送 ✅
+- **2.3**: 语音接收与转写 ✅ (发送端延后)
+
+**Phase 2 核心目标**: 大文件与语音处理能力达成 100%
+
+---
+
+## 待办 (Phase 3)
+
+| Phase | 功能 | 优先级 |
+|-------|------|--------|
+| 3.1 | sendVoice() 语音发送 | P2 |
+| 3.2 | Web 配置 UI | P3 |
+| 3.3 | 扫码授权集成 | P3 |
+
+*Phase 2: ✅ 完成*
+*下一步: Phase 3.1 sendVoice()*
 

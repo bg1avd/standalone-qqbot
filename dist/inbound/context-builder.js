@@ -18,6 +18,11 @@ import { parseUserContent } from "./content-parser.js";
 import { resolveQuote } from "./quote-resolver.js";
 import { setRefIndex, buildRefEntryFromMessage } from "./ref-index.js";
 import { log } from "../utils/logger.js";
+import { tmpdir } from "os";
+import { randomUUID } from "crypto";
+import { writeFile, mkdir } from "fs/promises";
+import { join } from "path";
+import { downloadAndProcessVoice } from "./voice-processor.js";
 // ============================================================================
 // Stage 1: Access Control
 // ============================================================================
@@ -86,6 +91,7 @@ export async function processAttachments(attachments, options) {
         voiceAsrReferTexts: [],
         voiceTranscripts: [],
         voiceTranscriptSources: [],
+        voiceDecodedWavPaths: [],
         attachmentLocalPaths: [],
     };
     if (!attachments?.length) {
@@ -94,6 +100,14 @@ export async function processAttachments(attachments, options) {
     const imageParts = [];
     const fileParts = [];
     const voiceParts = [];
+    // 确保临时目录存在
+    const dataDir = options?.dataDir ?? join(tmpdir(), "standalone-qqbot-voice");
+    try {
+        await mkdir(dataDir, { recursive: true });
+    }
+    catch {
+        // ignore
+    }
     for (const att of attachments) {
         const contentType = (att.content_type ?? "").toLowerCase();
         if (contentType.startsWith("image/")) {
@@ -105,12 +119,46 @@ export async function processAttachments(attachments, options) {
             imageParts.push(`[Image: ${att.filename ?? "attachment"}]`);
         }
         else if (contentType === "voice" || contentType.startsWith("audio/")) {
-            result.voiceAttachmentUrls.push(att.voice_wav_url ?? att.url);
+            const voiceUrl = att.voice_wav_url ?? att.url;
+            result.voiceAttachmentUrls.push(voiceUrl);
             if (att.asr_refer_text) {
+                // QQ 平台已提供 ASR 转写
                 result.voiceAsrReferTexts.push(att.asr_refer_text);
                 result.voiceTranscripts.push(att.asr_refer_text);
                 result.voiceTranscriptSources.push("asr");
                 voiceParts.push(`[Voice: "${att.asr_refer_text}"]`);
+            }
+            else if (options?.enableVoiceProcessing) {
+                // Phase 2.3: 下载并处理语音（解码 + 可选 STT）
+                try {
+                    log.voice.info(`Processing voice from: ${voiceUrl}`);
+                    const processed = await downloadAndProcessVoice(voiceUrl, {
+                        enableSTT: !!options.sttApiKey,
+                        sttApiKey: options.sttApiKey,
+                    });
+                    // 保存解码后的 WAV 到临时文件
+                    if (processed.wavBuffer) {
+                        const wavFilename = `voice-${randomUUID()}.wav`;
+                        const wavPath = join(dataDir, wavFilename);
+                        await writeFile(wavPath, processed.wavBuffer);
+                        result.voiceDecodedWavPaths.push(wavPath);
+                        log.voice.debug(`Saved decoded WAV: ${wavPath}`);
+                    }
+                    // 如果有转写结果
+                    if (processed.transcript) {
+                        result.voiceTranscripts.push(processed.transcript);
+                        result.voiceTranscriptSources.push("silk-wasm+stt");
+                        voiceParts.push(`[Voice: "${processed.transcript}"]`);
+                    }
+                    else {
+                        voiceParts.push("[Voice message]"); // 有解码但无转写
+                    }
+                }
+                catch (err) {
+                    const msg = err instanceof Error ? err.message : String(err);
+                    log.voice.error(`Voice processing failed: ${msg}`);
+                    voiceParts.push("[Voice message]"); // 回退
+                }
             }
             else {
                 voiceParts.push("[Voice message]");
@@ -288,6 +336,7 @@ export async function buildInboundContext(event, accountConfig) {
                 voiceAsrReferTexts: [],
                 voiceTranscripts: [],
                 voiceTranscriptSources: [],
+                voiceDecodedWavPaths: [],
                 attachmentLocalPaths: [],
             },
             localMediaPaths: [],
@@ -305,8 +354,14 @@ export async function buildInboundContext(event, accountConfig) {
         };
     }
     const { access, isGroupChat, peerId, qualifiedTarget, fromAddress } = accessResult;
-    // Stage 2: Attachments
-    const processed = await processAttachments(event.attachments);
+    // Stage 2: Attachments (with Phase 2.3 voice processing)
+    const voiceProcessingEnabled = process.env.VOICE_ENABLE_PROCESSING === 'true';
+    const sttApiKey = process.env.VOICE_STT_API_KEY;
+    const processed = await processAttachments(event.attachments, {
+        enableVoiceProcessing: voiceProcessingEnabled,
+        sttApiKey: sttApiKey,
+        dataDir: join(tmpdir(), "standalone-qqbot-voice"),
+    });
     // Stage 3: User Content
     const { parsedContent, userContent } = buildUserContent(event, processed);
     // Stage 4: Quote

@@ -122,6 +122,7 @@ export interface ProcessedAttachments {
   voiceAsrReferTexts: string[]
   voiceTranscripts: string[]
   voiceTranscriptSources: string[]
+  voiceDecodedWavPaths: string[] // Phase 2.3: 解码后的 WAV 文件路径
   attachmentLocalPaths: string[]
 }
 
