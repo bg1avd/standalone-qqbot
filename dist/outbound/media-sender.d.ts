@@ -38,5 +38,9 @@ export declare function sendVideo(ctx: MediaContext, videoPath: string, options?
  * 发送文件
  */
 export declare function sendDocument(ctx: MediaContext, filePath: string, options?: SendMediaOptions): Promise<SendResult>;
+/**
+ * 发送语音消息（Phase 3.1）
+ */
+export declare function sendVoice(ctx: MediaContext, audioPath: string, options?: SendMediaOptions): Promise<SendResult>;
 export {};
 //# sourceMappingURL=media-sender.d.ts.map

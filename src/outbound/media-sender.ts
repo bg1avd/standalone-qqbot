@@ -17,6 +17,7 @@ import { log } from "../utils/logger.js"
 import { ChunkedUploader, type UploadResult } from "./chunked-upload.js"
 import type { SendResult, SendTargetType, MediaKind } from "../types/index.js"
 import type { ChunkedUploadContext } from "./chunked-upload.js"
+import { sendVoice as sendVoiceImpl } from "./voice-sender.js"
 
 const API_BASE = "https://api.q.qq.com"
 const MAX_ONESHOT_SIZE = 20 * 1024 * 1024 // 20MB for one-shot upload
@@ -457,4 +458,25 @@ function formatFileSize(bytes: number): string {
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
   if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
   return `${(bytes / (1024 * 1024 * 1024)).toFixed(1)} GB`
+}
+
+/**
+ * 发送语音消息（Phase 3.1）
+ */
+export async function sendVoice(
+  ctx: MediaContext,
+  audioPath: string,
+  options: SendMediaOptions = {}
+): Promise<SendResult> {
+  log.outbound.debug(`Sending voice: ${audioPath.slice(0, 80)}`)
+  return sendVoiceImpl(
+    {
+      appId: ctx.appId,
+      accessToken: ctx.accessToken,
+      targetType: ctx.targetType,
+      targetId: ctx.targetId,
+    },
+    audioPath,
+    options
+  )
 }
