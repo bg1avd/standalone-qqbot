@@ -1,6 +1,6 @@
 {
   "name": "@raolin2025/standalone-qqbot",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Standalone QQ Bot SDK — connect to QQ Open Platform WebSocket Gateway, send/receive messages, manage groups. Zero framework dependencies.",
   "type": "module",
   "main": "./dist/index.js",
