@@ -2,8 +2,9 @@
 
 **项目名称**: `standalone-qqbot`
 **日期**: 2026-06-04
-**状态**: Phase 1 全部完成 (100%✅)，Phase 2 全部完成 (100%✅)，Phase 3.1 完成 (100%✅)
+**状态**: Phase 1 (100%✅), Phase 2 (100%✅), Phase 3.1 (✅), Phase 3.2 (✅)
 **语音处理**: Phase 2.3 接收解码完成，Phase 3.1 发送编码完成
+**配置管理**: Phase 3.2 Web Config UI 完成
 
 ---
 
