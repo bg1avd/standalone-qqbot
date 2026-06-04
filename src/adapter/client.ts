@@ -26,8 +26,9 @@ import { loadConfig, loadConfigWithDefaults } from "../config/loader.js"
 import { GatewayConnection, type GatewayEvents } from "../gateway/index.js"
 import { getAccessToken } from "../gateway/token.js"
 import { buildInboundContext } from "../inbound/index.js"
-import { sendText, sendPhoto, sendVideo, sendDocument } from "../outbound/index.js"
+import { sendText, sendPhoto, sendVideo, sendDocument, sendVoice } from "../outbound/index.js"
 import { CommandRegistry, parseSlashCommand } from "../commands/index.js"
+import type { WebConfigServer } from "../web/index.js"
 import { QQBotEventEmitter } from "./event-emitter.js"
 import type {
   QQBotClientOptions,
@@ -51,6 +52,7 @@ export class QQBotClient extends QQBotEventEmitter {
   private abortControllers: Map<string, any> = new Map()
   private connected = false
   private dataDir: string
+  private webServer: any = null
 
   constructor(private options: QQBotClientOptions = {}) {
     super()
@@ -86,6 +88,9 @@ export class QQBotClient extends QQBotEventEmitter {
     }
 
     log.gateway.info("Connecting with %d account(s)", this.config.accounts.length)
+
+    // 启动 Web Config UI（如果启用）
+    await this.startWebServerIfNeeded()
 
     // 为每个账号启动连接
     for (const accountConfig of this.config.accounts) {
@@ -311,6 +316,29 @@ export class QQBotClient extends QQBotEventEmitter {
   }
 
   /**
+   * 发送语音
+   */
+  async sendVoice(
+    targetType: SendTargetType,
+    targetId: string,
+    audioPath: string,
+    options?: { fileName?: string }
+  ): Promise<SendResult> {
+    if (!this.config || this.config.accounts.length === 0) {
+      return { channel: "qqbot", error: "No account configured" }
+    }
+
+    const account = this.config.accounts[0]
+    const accessToken = await getAccessToken(account.appId, account.clientSecret)
+
+    return sendVoice(
+      { appId: account.appId, accessToken, targetType, targetId },
+      audioPath,
+      options
+    )
+  }
+
+  /**
    * 注册自定义命令
    */
   registerCommand(command: SlashCommand): void {
@@ -324,11 +352,45 @@ export class QQBotClient extends QQBotEventEmitter {
     connected: boolean
     accounts: number
     connections: number
+    webConfig?: { port: number; host: string; running: boolean }
   } {
     return {
       connected: this.connected,
       accounts: this.config?.accounts.length ?? 0,
       connections: this.connections.size,
+      webConfig: this.webServer ? { port: this.options.webConfig?.port ?? 3000, host: this.options.webConfig?.host ?? '127.0.0.1', running: true } : undefined,
+    }
+  }
+
+  /**
+   * 按需启动 Web 配置服务器
+   */
+  private async startWebServerIfNeeded(): Promise<void> {
+    if (!this.options.webConfig) {
+      return
+    }
+    if (this.webServer) {
+      log.config.warn("Web config server already running")
+      return
+    }
+
+    const { WebConfigServer } = await import("../web/server.js")
+    this.webServer = new WebConfigServer({
+      configDir: this.dataDir,
+      port: this.options.webConfig.port,
+      host: this.options.webConfig.host,
+      username: this.options.webConfig.username,
+      password: this.options.webConfig.password,
+      allowedOrigins: this.options.webConfig.allowedOrigins,
+    })
+
+    try {
+      await this.webServer.start()
+      log.config.info("Web config UI started on %s:%d", this.options.webConfig.host, this.options.webConfig.port)
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err)
+      log.config.error("Failed to start web server: %s", msg)
+      this.webServer = null
     }
   }
 

@@ -274,6 +274,20 @@ export interface QQBotClientOptions {
   dataDir?: string
   debug?: boolean
   onConfigReload?: (config: QQBotConfig) => void
+  webConfig?: WebConfigServerOptions // Phase 3.2
+}
+
+// ============================================================================
+// Web Config UI Types (Phase 3.2)
+// ============================================================================
+
+export interface WebConfigServerOptions {
+  port?: number
+  host?: string
+  configDir: string
+  username?: string
+  password?: string
+  allowedOrigins?: string[]
 }
 
 // ============================================================================

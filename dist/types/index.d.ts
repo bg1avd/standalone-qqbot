@@ -213,6 +213,15 @@ export interface QQBotClientOptions {
     dataDir?: string;
     debug?: boolean;
     onConfigReload?: (config: QQBotConfig) => void;
+    webConfig?: WebConfigServerOptions;
+}
+export interface WebConfigServerOptions {
+    port?: number;
+    host?: string;
+    configDir: string;
+    username?: string;
+    password?: string;
+    allowedOrigins?: string[];
 }
 export interface QQBotEvents {
     "raw:message": (event: string, data: any) => void;

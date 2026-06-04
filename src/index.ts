@@ -112,5 +112,9 @@ export * from "./types/index.js"
 export { log, createLogger, setGlobalEnabled } from "./utils/logger.js"
 export type { Logger } from "./utils/logger.js"
 
+// Web Config UI (Phase 3.2)
+export { WebConfigServer } from "./web/server.js"
+export type { WebConfigServerOptions } from "./web/server.js"
+
 // Default export for convenience
 export { QQBotClient as default } from "./adapter/client.js"

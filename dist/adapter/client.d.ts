@@ -29,6 +29,7 @@ export declare class QQBotClient extends QQBotEventEmitter {
     private abortControllers;
     private connected;
     private dataDir;
+    private webServer;
     constructor(options?: QQBotClientOptions);
     /**
      * 连接到 QQ Gateway
@@ -77,6 +78,12 @@ export declare class QQBotClient extends QQBotEventEmitter {
         fileName?: string;
     }): Promise<SendResult>;
     /**
+     * 发送语音
+     */
+    sendVoice(targetType: SendTargetType, targetId: string, audioPath: string, options?: {
+        fileName?: string;
+    }): Promise<SendResult>;
+    /**
      * 注册自定义命令
      */
     registerCommand(command: SlashCommand): void;
@@ -87,7 +94,16 @@ export declare class QQBotClient extends QQBotEventEmitter {
         connected: boolean;
         accounts: number;
         connections: number;
+        webConfig?: {
+            port: number;
+            host: string;
+            running: boolean;
+        };
     };
+    /**
+     * 按需启动 Web 配置服务器
+     */
+    private startWebServerIfNeeded;
     /**
      * 解析 peer ID
      */

@@ -32,5 +32,7 @@ export type { ParsedCommand, SlashCommand } from "./commands/index.js";
 export * from "./types/index.js";
 export { log, createLogger, setGlobalEnabled } from "./utils/logger.js";
 export type { Logger } from "./utils/logger.js";
+export { WebConfigServer } from "./web/server.js";
+export type { WebConfigServerOptions } from "./web/server.js";
 export { QQBotClient as default } from "./adapter/client.js";
 //# sourceMappingURL=index.d.ts.map

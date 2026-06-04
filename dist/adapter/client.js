@@ -24,7 +24,7 @@ import { loadConfig, loadConfigWithDefaults } from "../config/loader.js";
 import { GatewayConnection } from "../gateway/index.js";
 import { getAccessToken } from "../gateway/token.js";
 import { buildInboundContext } from "../inbound/index.js";
-import { sendText, sendPhoto, sendVideo, sendDocument } from "../outbound/index.js";
+import { sendText, sendPhoto, sendVideo, sendDocument, sendVoice } from "../outbound/index.js";
 import { CommandRegistry, parseSlashCommand } from "../commands/index.js";
 import { QQBotEventEmitter } from "./event-emitter.js";
 import { log, setGlobalEnabled } from "../utils/logger.js";
@@ -39,6 +39,7 @@ export class QQBotClient extends QQBotEventEmitter {
     abortControllers = new Map();
     connected = false;
     dataDir;
+    webServer = null;
     constructor(options = {}) {
         super();
         this.options = options;
@@ -70,6 +71,8 @@ export class QQBotClient extends QQBotEventEmitter {
             this.config = loadConfigWithDefaults(this.dataDir);
         }
         log.gateway.info("Connecting with %d account(s)", this.config.accounts.length);
+        // 启动 Web Config UI（如果启用）
+        await this.startWebServerIfNeeded();
         // 为每个账号启动连接
         for (const accountConfig of this.config.accounts) {
             const account = {
@@ -226,6 +229,17 @@ export class QQBotClient extends QQBotEventEmitter {
         return sendDocument({ appId: account.appId, accessToken, targetType, targetId, msgId: options?.msgId }, filePath, options);
     }
     /**
+     * 发送语音
+     */
+    async sendVoice(targetType, targetId, audioPath, options) {
+        if (!this.config || this.config.accounts.length === 0) {
+            return { channel: "qqbot", error: "No account configured" };
+        }
+        const account = this.config.accounts[0];
+        const accessToken = await getAccessToken(account.appId, account.clientSecret);
+        return sendVoice({ appId: account.appId, accessToken, targetType, targetId }, audioPath, options);
+    }
+    /**
      * 注册自定义命令
      */
     registerCommand(command) {
@@ -239,7 +253,38 @@ export class QQBotClient extends QQBotEventEmitter {
             connected: this.connected,
             accounts: this.config?.accounts.length ?? 0,
             connections: this.connections.size,
+            webConfig: this.webServer ? { port: this.options.webConfig?.port ?? 3000, host: this.options.webConfig?.host ?? '127.0.0.1', running: true } : undefined,
         };
+    }
+    /**
+     * 按需启动 Web 配置服务器
+     */
+    async startWebServerIfNeeded() {
+        if (!this.options.webConfig) {
+            return;
+        }
+        if (this.webServer) {
+            log.config.warn("Web config server already running");
+            return;
+        }
+        const { WebConfigServer } = await import("../web/server.js");
+        this.webServer = new WebConfigServer({
+            configDir: this.dataDir,
+            port: this.options.webConfig.port,
+            host: this.options.webConfig.host,
+            username: this.options.webConfig.username,
+            password: this.options.webConfig.password,
+            allowedOrigins: this.options.webConfig.allowedOrigins,
+        });
+        try {
+            await this.webServer.start();
+            log.config.info("Web config UI started on %s:%d", this.options.webConfig.host, this.options.webConfig.port);
+        }
+        catch (err) {
+            const msg = err instanceof Error ? err.message : String(err);
+            log.config.error("Failed to start web server: %s", msg);
+            this.webServer = null;
+        }
     }
     /**
      * 解析 peer ID
