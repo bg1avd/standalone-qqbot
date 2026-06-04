@@ -1,0 +1,50 @@
+{
+  "name": "standalone-qqbot",
+  "version": "0.1.0",
+  "description": "Standalone QQ Bot SDK — connect to QQ Open Platform WebSocket Gateway, send/receive messages, manage groups. Zero framework dependencies.",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx watch src/index.ts",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit"
+  },
+  "keywords": ["qqbot", "qq", "websocket", "chatbot"],
+  "author": "bg1avd",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/bg1avd/standalone-qqbot.git"
+  },
+  "homepage": "https://github.com/bg1avd/standalone-qqbot#readme",
+  "bugs": {
+    "url": "https://github.com/bg1avd/standalone-qqbot/issues"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "ws": "^8.20.0",
+    "zod": "^3.24.0",
+    "yaml": "^2.6.0",
+    "debug": "^4.4.0",
+    "node-abort-controller": "^3.1.1"
+  },
+  "devDependencies": {
+    "@types/debug": "^4.1.12",
+    "@types/node": "^22.0.0",
+    "@types/ws": "^8.5.13",
+    "tsx": "^4.19.0",
+    "typescript": "^5.7.0",
+    "vitest": "^3.0.0"
+  }
+}
