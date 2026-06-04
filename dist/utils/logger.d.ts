@@ -30,5 +30,6 @@ export declare const log: {
     config: Logger;
     session: Logger;
     upload: Logger;
+    chunked: Logger;
 };
 //# sourceMappingURL=logger.d.ts.map

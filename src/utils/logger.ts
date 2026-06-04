@@ -55,4 +55,5 @@ export const log = {
   config: createLogger("qqbot:config"),
   session: createLogger("qqbot:session"),
   upload: createLogger("qqbot:upload"),
+  chunked: createLogger("qqbot:chunked"),
 }

@@ -14,7 +14,9 @@
 import { readFileSync, existsSync } from "fs"
 import { join } from "path"
 import { log } from "../utils/logger.js"
+import { ChunkedUploader, type UploadResult } from "./chunked-upload.js"
 import type { SendResult, SendTargetType, MediaKind } from "../types/index.js"
+import type { ChunkedUploadContext } from "./chunked-upload.js"
 
 const API_BASE = "https://api.q.qq.com"
 const MAX_ONESHOT_SIZE = 20 * 1024 * 1024 // 20MB for one-shot upload
@@ -93,19 +95,42 @@ async function sendMedia(
       return { channel: "qqbot", error: (resolvedPath as any).error }
     }
 
-    // 检查文件存在和大小
+    // 检查文件存在
     if (!existsSync(resolvedPath.path)) {
       return { channel: "qqbot", error: `File not found: ${resolvedPath.path}` }
     }
 
+    // 确定文件名（尽早定义避免 TDZ）
+    const resolvedFileName = options.fileName ?? basename(resolvedPath.path)
+
+    // 检查大小
     const size = getFileSize(resolvedPath.path)
     if (size > MAX_ONESHOT_SIZE) {
-      // TODO: implement chunked upload (P2)
-      return { channel: "qqbot", error: `File too large (${formatFileSize(size)}). Chunked upload not yet implemented.` }
+      // Phase 2: Chunked upload for large files
+      try {
+        const uploader = new ChunkedUploader()
+        const result = await uploader.uploadFile(
+          {
+            appId: ctx.appId,
+            accessToken: ctx.accessToken,
+            targetType: ctx.targetType,
+            targetId: ctx.targetId,
+          } as ChunkedUploadContext,
+          kind,
+          resolvedPath.path,
+          resolvedFileName,
+          {} // empty options for now
+        )
+        // 上传完成后通过 sendMediaReference 发送引用
+        return await sendMediaReference(ctx, kind, result.fileUuid, resolvedFileName)
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err)
+        log.outbound.error(`Chunked upload failed: ${msg}`)
+        return { channel: "qqbot", error: msg }
+      }
     }
 
-    const fileName = options.fileName ?? basename(resolvedPath.path)
-    return sendMediaFromLocal(ctx, kind, resolvedPath.path, fileName)
+    return sendMediaFromLocal(ctx, kind, resolvedPath.path, resolvedFileName)
   }
 
   if (isHttp) {
@@ -116,7 +141,7 @@ async function sendMedia(
 
   if (isData) {
     // Base64 Data URL
-    return sendMediaFromBase64(ctx, kind, mediaPath, options.fileName)
+    return sendMediaFromBase64(ctx, kind, mediaPath, options.fileName ?? "attachment")
   }
 
   return { channel: "qqbot", error: `Unsupported media source: ${mediaPath.slice(0, 50)}` }
@@ -258,14 +283,52 @@ async function sendMediaReference(
   fileUuid: string | undefined,
   fileName?: string
 ): Promise<SendResult> {
-  // TODO: 实现媒体引用消息发送
-  // 目前返回成功，但实际没有发送出去
-  // 需要在 Phase 1.5 完善
+  if (!fileUuid) {
+    return { channel: "qqbot", error: "Missing file_uuid for media reference" }
+  }
 
-  log.outbound.warn(`Media reference sending not yet implemented. file_uuid=${fileUuid}`)
-  return {
-    channel: "qqbot",
-    error: "Media reference sending not yet implemented",
+  try {
+    const apiPath = buildMessageSendPath(ctx.targetType)
+    const fullUrl = `${API_BASE}${apiPath}`.replace("{id}", ctx.targetId)
+
+    const body: any = {
+      // QQ API v2 消息发送格式参考
+      content: "", // 媒体消息通常 content 为空或配合媒体一起显示
+      msg_type: getMessageType(kind),
+      media: {
+        file_uuid: fileUuid,
+        filename: fileName ?? "attachment",
+      },
+    }
+
+    if (ctx.msgId) {
+      body.msg_id = ctx.msgId // 回复引用
+    }
+
+    const resp = await fetch(fullUrl, {
+      method: "POST",
+      headers: {
+        Authorization: `QQBot ${ctx.accessToken}`,
+        "X-Union-Appid": ctx.appId,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(body),
+    })
+
+    if (!resp.ok) {
+      const errorText = await resp.text().catch(() => "")
+      log.outbound.error(`Media reference send failed: HTTP ${resp.status}: ${errorText}`)
+      return { channel: "qqbot", error: `HTTP ${resp.status}` }
+    }
+
+    const data = await resp.json() as { id: string }
+    log.outbound.info(`Media reference sent: message_id=${data.id}`)
+
+    return { channel: "qqbot", messageId: data.id }
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err)
+    log.outbound.error(`Media reference send failed: ${msg}`)
+    return { channel: "qqbot", error: msg }
   }
 }
 
@@ -309,6 +372,34 @@ function buildMediaUploadPath(targetType: SendTargetType, kind: MediaKind): stri
       return `/channels/{id}/messages` // Media in channel uses messages API
     default:
       return `/v2/groups/{id}/files`
+  }
+}
+
+function buildMessageSendPath(targetType: SendTargetType): string {
+  switch (targetType) {
+    case "c2c":
+      return `/v2/users/{id}/messages`
+    case "group":
+      return `/v2/groups/{id}/messages`
+    case "channel":
+      return `/channels/{id}/messages`
+    case "dm":
+      return `/dms/{id}/messages` // 待确认
+    default:
+      return `/v2/groups/{id}/messages`
+  }
+}
+
+function getMessageType(kind: MediaKind): number {
+  switch (kind) {
+    case "image":
+      return 0 // 文本+图片混合消息？QQ API 可能需要特定格式
+    case "video":
+      return 2 // VIDEO
+    case "file":
+      return 4 // FILE
+    default:
+      return 0
   }
 }
 

@@ -209,3 +209,36 @@ ls dist/
 
 *Phase 1: ✅ 完成*
 *下一步: npm publish 或按需扩展 Phase 2*
+---
+
+## Phase 2 进度（2026-06-04 启动）
+
+| Phase | 功能 | 状态 | 完成日期 |
+|-------|------|------|----------|
+| 2.1 | 分块上传 (Chunked Upload) | ✅ 完成 | 2026-06-04 |
+| 2.2 | 媒体引用发送 (Media Reference) | ✅ 完成 | 2026-06-04 |
+| 2.3 | 语音处理 (Voice Processing) | ⏳ 待开始 | - |
+
+**Phase 2 整体进度**: 2/3 完成 (66%) 🔄
+
+### Phase 2.1 分块上传 完成详情
+
+- ✅ 新增 `src/outbound/chunked-upload.ts` (ChunkedUploader 类)
+- ✅ 支持大文件 (>20MB) 分块上传到 QQ 文件服务
+- ✅ 并发控制 (默认 3 并发)
+- ✅ 进度回调支持 (可选)
+- ✅ 完整错误处理和日志
+
+### Phase 2.2 媒体引用发送 完成详情
+
+- ✅ 扩展 `sendMedia*()` 方法支持 `file_uuid` 引用
+- ✅ 实现 `sendMediaReference()` 发送带媒体的消息
+- ✅ 集成分块上传后的引用流程
+
+### 下一步：Phase 2.3 语音处理
+
+- ⏳ 集成 silk-wasm 编解码
+- ⏳ 实现语音消息接收解码
+- ⏳ STT 语音转文字 (可选)
+- ⏳ sendVoice() 方法实现
+
